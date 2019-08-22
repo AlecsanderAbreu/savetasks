@@ -8,9 +8,30 @@ server.listen(3000);
 const projects = [
   {
     id: "1",
-    title: "Teste"
+    title: "Teste",
+    tasks: []
   }
 ];
+
+let requests_count = 1;
+
+server.use((req, res, next) => {
+  console.log(`Número de requisições: ${requests_count++}`);
+
+  next();
+});
+
+function checkProjectExists(req, res, next) {
+  const { id } = req.params;
+
+  const project_exists = projects.findIndex(item => item.id == id);
+
+  if (project_exists == -1) {
+    return res.status(400).json({ error: "Parameter 'id' does exists." });
+  }
+
+  next();
+}
 
 server.get("/projects", (req, res) => {
   return res.json(projects);
@@ -19,15 +40,18 @@ server.get("/projects", (req, res) => {
 server.post("/projects", (req, res) => {
   const { id, title } = req.body;
 
-  const project = projects.push({
-    id: id,
-    title: title
-  });
+  const project = {
+    id,
+    title,
+    tasks: []
+  };
 
-  return res.json(projects[project - 1]);
+  projects.push(project);
+
+  return res.json(project);
 });
 
-server.put("/projects/:id", (req, res) => {
+server.put("/projects/:id", checkProjectExists, (req, res) => {
   const { id } = req.params;
   const { title } = req.body;
   let index;
@@ -39,7 +63,7 @@ server.put("/projects/:id", (req, res) => {
   return res.json(projects[index]);
 });
 
-server.delete("/projects/:id", (req, res) => {
+server.delete("/projects/:id", checkProjectExists, (req, res) => {
   const { id } = req.params;
   let index;
 
@@ -52,4 +76,31 @@ server.delete("/projects/:id", (req, res) => {
   projects.splice(index, 1);
 
   return res.json({ message: "Successfully deleted." });
+});
+
+// Restoration performed
+/* server.post("/projects/:id/tasks", checkProjectExists, (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+
+  const index = projects.findIndex(item => item.id == id);
+
+  if (typeof projects[index].tasks === "undefined") {
+    projects[index].tasks = [];
+  }
+
+  projects[index].tasks.push(title);
+
+  return res.json(projects);
+}); */
+
+server.post("/projects/:id/tasks", checkProjectExists, (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+
+  const project = projects.find(p => p.id == id);
+
+  project.tasks.push(title);
+
+  return res.json(project);
 });
